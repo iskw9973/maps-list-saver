@@ -31,6 +31,7 @@ Small Unix-style steps connected by TSV files:
 
 ## Requirements
 
+- macOS (the default Chrome path and the Keychain cookie handling assume it)
 - Node.js 20+
 - Google Chrome installed (the tool drives real Chrome, not bundled Chromium — set `MAPS_LIST_SAVER_CHANNEL` to override)
 

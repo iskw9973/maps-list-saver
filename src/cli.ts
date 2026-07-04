@@ -2,6 +2,7 @@
 import fs from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import {
+  ensureSignedIn,
   humanDelay,
   launchContext,
   loginWithPlainChrome,
@@ -90,12 +91,15 @@ async function resolveCommand(argv: string[]): Promise<void> {
   const resolved = [];
   const misses: string[] = [];
   try {
+    await ensureSignedIn(page);
     for (const [i, query] of queries.entries()) {
       process.stderr.write(`[${i + 1}/${queries.length}] ${query} ... `);
       const place = await resolvePlace(page, query).catch(() => null);
       if (place) {
         resolved.push(place);
-        process.stderr.write(`-> ${place.name}\n`);
+        process.stderr.write(
+          `-> ${place.name}${place.match === 'first' ? ' (first of several hits — review!)' : ''}\n`,
+        );
       } else {
         misses.push(query);
         process.stderr.write('not found\n');
@@ -152,15 +156,16 @@ async function saveCommand(argv: string[]): Promise<void> {
   const page = context.pages()[0] ?? (await context.newPage());
   let failed = 0;
   try {
+    await ensureSignedIn(page);
     for (const [i, place] of pending.entries()) {
       process.stderr.write(`[${i + 1}/${pending.length}] ${place.name} ... `);
       try {
-        const outcome = await savePlace(page, place.url, listName);
+        const { status, list } = await savePlace(page, place.url, listName);
         await fs.appendFile(
           values.results,
-          serializeSaveResult({ url: place.url, query: place.query, status: outcome }) + '\n',
+          serializeSaveResult({ url: place.url, query: place.query, status }) + '\n',
         );
-        process.stderr.write(outcome === 'saved' ? 'saved\n' : 'already saved\n');
+        process.stderr.write(status === 'saved' ? `saved → ${list}\n` : 'already saved\n');
       } catch (err) {
         failed++;
         await fs.appendFile(

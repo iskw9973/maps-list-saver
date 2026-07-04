@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { chromium, type BrowserContext } from 'playwright';
+import { chromium, type BrowserContext, type Page } from 'playwright';
 
 /**
  * Persistent Chrome profile so the user logs in to Google once by hand.
@@ -78,6 +78,26 @@ export async function launchContext(
     profileDir(options.profile),
     launchOptions(options.headless ?? false),
   );
+}
+
+/**
+ * Fail fast when the Google session is gone — otherwise every save burns a
+ * 20 s selector timeout before failing. Only an affirmatively visible sign-in
+ * link aborts the run; if neither header link is found (selector rot) we
+ * proceed as before. Both hrefs are UI-language independent.
+ */
+export async function ensureSignedIn(page: Page): Promise<void> {
+  await page.goto('https://www.google.com/maps', { waitUntil: 'domcontentloaded' });
+  const signIn = page.locator('a[href*="ServiceLogin"]');
+  const account = page.locator('a[href*="SignOutOptions"]');
+  await signIn
+    .or(account)
+    .first()
+    .waitFor({ state: 'visible', timeout: 15000 })
+    .catch(() => {});
+  if (await signIn.first().isVisible().catch(() => false)) {
+    throw new Error('Google session is signed out — run `maps-list-saver login` first.');
+  }
 }
 
 /** Random pause between actions so the pace stays human-like. */

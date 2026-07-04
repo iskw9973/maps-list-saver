@@ -1,6 +1,10 @@
 import type { Page } from 'playwright';
 
-export type SaveOutcome = 'saved' | 'already';
+export interface SaveOutcome {
+  status: 'saved' | 'already';
+  /** Accessible label of the list entry that was actually clicked. */
+  list?: string;
+}
 
 // Google Maps action buttons carry data-value in the UI language.
 const SAVE_BTN = 'button[data-value="保存"], button[data-value="Save"]';
@@ -10,6 +14,15 @@ const NEW_LIST = /新しいリスト|New list/;
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Menu entries carry extra text after the list name ("行きたい・非公開・3件"),
+ * so anchor at the start: a bare substring match would silently save into a
+ * different list whose name merely contains the requested one.
+ */
+export function listNamePattern(listName: string): RegExp {
+  return new RegExp(`^${escapeRegExp(listName)}`);
 }
 
 /**
@@ -23,26 +36,27 @@ export async function savePlace(page: Page, url: string, listName: string): Prom
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector(`${SAVE_BTN}, ${SAVED_BTN}`, { timeout: 20000 });
 
-  if (await page.locator(SAVED_BTN).count()) return 'already';
+  if (await page.locator(SAVED_BTN).count()) return { status: 'already' };
 
   await page.locator(SAVE_BTN).first().click();
   await page.waitForSelector(MENU_ITEM, { timeout: 10000 });
 
-  // The save menu lists favorites / want-to-go / custom lists. Accessible
-  // names include extra text like "・非公開・12件", so match by substring.
-  const namePattern = new RegExp(escapeRegExp(listName));
+  const namePattern = listNamePattern(listName);
   const item = page
     .getByRole('menuitemradio', { name: namePattern })
     .or(page.getByRole('menuitem', { name: namePattern }));
+  let list = listName;
   if (await item.count()) {
+    list = (await item.first().textContent())?.trim() || listName;
     await item.first().click();
   } else {
     await createListAndSave(page, listName);
   }
 
-  // Give the save request time to land before navigating away.
-  await page.waitForTimeout(1500);
-  return 'saved';
+  // Confirm the save actually landed: the button flips to "Saved". A fixed
+  // sleep here used to report 'saved' even when the request never made it.
+  await page.waitForSelector(SAVED_BTN, { timeout: 15000 });
+  return { status: 'saved', list };
 }
 
 async function createListAndSave(page: Page, listName: string): Promise<void> {
