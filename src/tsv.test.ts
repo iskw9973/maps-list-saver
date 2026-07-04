@@ -32,6 +32,17 @@ describe('resolved TSV round-trip', () => {
     const text = serializeResolved([place]) + '\n\nmalformed-row\n';
     expect(parseResolved(text)).toEqual([place]);
   });
+
+  it('round-trips the match confidence column', () => {
+    const first: ResolvedPlace = { ...place, match: 'first' };
+    const unique: ResolvedPlace = { ...place, match: 'unique' };
+    expect(parseResolved(serializeResolved([first, unique]))).toEqual([first, unique]);
+  });
+
+  it('ignores an unknown value in the match column', () => {
+    const text = serializeResolved([place]) + '\tgarbage';
+    expect(parseResolved(text)).toEqual([place]);
+  });
 });
 
 describe('save results', () => {

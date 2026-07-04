@@ -15,7 +15,9 @@ export async function resolvePlace(page: Page, query: string): Promise<ResolvedP
     waitUntil: 'domcontentloaded',
   });
 
+  let match: ResolvedPlace['match'] = 'unique';
   if (!(await waitForPlaceUrl(page, 8000))) {
+    match = 'first';
     const firstHit = page.locator('a[href*="/maps/place/"]').first();
     try {
       await firstHit.click({ timeout: 8000 });
@@ -30,7 +32,7 @@ export async function resolvePlace(page: Page, query: string): Promise<ResolvedP
     .first()
     .textContent({ timeout: 5000 })
     .catch(() => null);
-  return { query, name: heading?.trim() || query, url: page.url() };
+  return { query, name: heading?.trim() || query, url: page.url(), match };
 }
 
 async function waitForPlaceUrl(page: Page, timeout: number): Promise<boolean> {

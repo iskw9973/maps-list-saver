@@ -1,8 +1,14 @@
+/** How a place URL was found: a unique search redirect, or the first entry of a results feed. */
+export type MatchConfidence = 'unique' | 'first';
+
 export interface ResolvedPlace {
   query: string;
   name: string;
   url: string;
+  match?: MatchConfidence;
 }
+
+const MATCH_CONFIDENCES: ReadonlySet<string> = new Set(['unique', 'first']);
 
 export type SaveStatus = 'saved' | 'already' | 'failed';
 
@@ -20,7 +26,11 @@ function sanitize(field: string): string {
 
 export function serializeResolved(places: ResolvedPlace[]): string {
   return places
-    .map((p) => [sanitize(p.query), sanitize(p.name), sanitize(p.url)].join('\t'))
+    .map((p) =>
+      [sanitize(p.query), sanitize(p.name), sanitize(p.url), ...(p.match ? [p.match] : [])].join(
+        '\t',
+      ),
+    )
     .join('\n');
 }
 
@@ -28,9 +38,14 @@ export function parseResolved(text: string): ResolvedPlace[] {
   const places: ResolvedPlace[] = [];
   for (const line of text.split(/\r?\n/)) {
     if (!line.trim()) continue;
-    const [query, name, url] = line.split('\t');
+    const [query, name, url, match] = line.split('\t');
     if (!query || !name || !url) continue;
-    places.push({ query, name, url });
+    places.push({
+      query,
+      name,
+      url,
+      ...(match && MATCH_CONFIDENCES.has(match) ? { match: match as MatchConfidence } : {}),
+    });
   }
   return places;
 }

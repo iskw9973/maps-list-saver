@@ -76,7 +76,7 @@ node dist/cli.js login --profile ~/.maps-list-saver/work
 node dist/cli.js save resolved.tsv --list "出張" --profile ~/.maps-list-saver/work
 ```
 
-`resolved.tsv` columns: `query`, `resolved name`, `url`. Delete or fix rows that resolved to the wrong place before running `save`.
+`resolved.tsv` columns: `query`, `resolved name`, `url`, `match`. `match` is `unique` when the search redirected straight to one place, `first` when the first entry of a results feed was picked — review `first` rows extra carefully. Delete or fix rows that resolved to the wrong place before running `save`.
 
 Failed saves are logged to `results.tsv` with the error; rerunning the same `save` command retries only the failures.
 
