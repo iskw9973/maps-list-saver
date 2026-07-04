@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { humanDelay, launchContext, profileDir } from './browser.js';
+import { humanDelay, launchContext, loginWithPlainChrome, profileDir } from './browser.js';
 import { parsePlaceList } from './places.js';
 import { resolvePlace } from './resolve.js';
 import { savePlace } from './save.js';
@@ -30,14 +30,11 @@ Usage:
 `;
 
 async function login(): Promise<void> {
-  const context = await launchContext();
-  const page = context.pages()[0] ?? (await context.newPage());
-  await page.goto('https://www.google.com/maps');
   process.stderr.write(
     `Log in to Google in the opened browser (profile: ${profileDir()}).\n` +
-      'When you are done, close the browser window.\n',
+      'When you are done, quit Chrome entirely (Cmd+Q on macOS).\n',
   );
-  await new Promise<void>((done) => context.on('close', () => done()));
+  await loginWithPlainChrome('https://www.google.com/maps');
 }
 
 async function resolveCommand(argv: string[]): Promise<void> {
