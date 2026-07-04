@@ -4,6 +4,16 @@ Bulk-save a plain-text list of places into your **Google Maps saved lists** ("Wa
 
 Google has never offered a write API for personal saved lists ([feature request open since 2017](https://issuetracker.google.com/issues/68749469)), so saving 30 places for a trip means 30 rounds of search-tap-save on your phone. This tool does that clicking for you, in your own browser, with your own session.
 
+## Demo
+
+The CLI — resolve free-text names, review, then save (2× speed):
+
+![CLI demo](docs/demo-cli.gif)
+
+The browser doing the clicking — each place saved into the target list (2× speed):
+
+![Browser demo](docs/demo-save.gif)
+
 ## How it works
 
 ```
