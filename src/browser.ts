@@ -41,16 +41,22 @@ export async function loginWithPlainChrome(startUrl: string): Promise<void> {
   });
 }
 
-export async function launchContext(): Promise<BrowserContext> {
-  return chromium.launchPersistentContext(profileDir(), {
+export function launchOptions(headless: boolean) {
+  return {
     channel: process.env.MAPS_LIST_SAVER_CHANNEL ?? 'chrome',
-    headless: false,
-    viewport: null,
+    headless,
+    // Headless has no real window; Maps needs a desktop-width layout for its
+    // selectors, so a fixed viewport replaces the headed viewport: null.
+    viewport: headless ? { width: 1440, height: 900 } : null,
     // On macOS Chrome encrypts cookies with a Keychain-derived key. Playwright
     // defaults to --use-mock-keychain, which cannot decrypt cookies written by
     // the plain-Chrome login session — Google then treats us as signed out.
     ignoreDefaultArgs: ['--use-mock-keychain'],
-  });
+  };
+}
+
+export async function launchContext(headless = false): Promise<BrowserContext> {
+  return chromium.launchPersistentContext(profileDir(), launchOptions(headless));
 }
 
 /** Random pause between actions so the pace stays human-like. */

@@ -58,6 +58,8 @@ cat resolved.tsv
 node dist/cli.js save resolved.tsv --list "行ってみたい"
 ```
 
+Add `--headless` to `resolve` or `save` to run without a visible browser window. Headed is the default because Google is more likely to flag headless sessions as automated — if a headless run suddenly behaves as signed out, drop the flag.
+
 `resolved.tsv` columns: `query`, `resolved name`, `url`. Delete or fix rows that resolved to the wrong place before running `save`.
 
 Failed saves are logged to `results.tsv` with the error; rerunning the same `save` command retries only the failures.

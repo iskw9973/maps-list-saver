@@ -20,13 +20,16 @@ Usage:
       Open Chrome with a dedicated profile; log in to Google by hand, then
       close the browser. Credentials never touch this tool.
 
-  maps-list-saver resolve <places.txt> [-o resolved.tsv]
+  maps-list-saver resolve <places.txt> [-o resolved.tsv] [--headless]
       Resolve free-text place names (one per line, # for comments) into
       canonical Google Maps URLs. Review the TSV before saving!
 
-  maps-list-saver save <resolved.tsv> --list <list name> [--results results.tsv]
+  maps-list-saver save <resolved.tsv> --list <list name> [--results results.tsv] [--headless]
       Save each resolved place into the given list. Progress is appended to
       the results file, so interrupted or failed runs can simply be rerun.
+
+  --headless runs without a visible browser window. If Google starts refusing
+  the session ("not signed in"), drop the flag and run headed again.
 `;
 
 async function login(): Promise<void> {
@@ -40,16 +43,21 @@ async function login(): Promise<void> {
 async function resolveCommand(argv: string[]): Promise<void> {
   const { values, positionals } = parseArgs({
     args: argv,
-    options: { output: { type: 'string', short: 'o' } },
+    options: {
+      output: { type: 'string', short: 'o' },
+      headless: { type: 'boolean', default: false },
+    },
     allowPositionals: true,
   });
   const inputPath = positionals[0];
-  if (!inputPath) throw new Error('usage: maps-list-saver resolve <places.txt> [-o resolved.tsv]');
+  if (!inputPath) {
+    throw new Error('usage: maps-list-saver resolve <places.txt> [-o resolved.tsv] [--headless]');
+  }
 
   const queries = parsePlaceList(await fs.readFile(inputPath, 'utf8'));
   process.stderr.write(`Resolving ${queries.length} places...\n`);
 
-  const context = await launchContext();
+  const context = await launchContext(values.headless);
   const page = context.pages()[0] ?? (await context.newPage());
   const resolved = [];
   const misses: string[] = [];
@@ -89,6 +97,7 @@ async function saveCommand(argv: string[]): Promise<void> {
     options: {
       list: { type: 'string', short: 'l' },
       results: { type: 'string', short: 'r', default: 'results.tsv' },
+      headless: { type: 'boolean', default: false },
     },
     allowPositionals: true,
   });
@@ -96,7 +105,7 @@ async function saveCommand(argv: string[]): Promise<void> {
   const listName = values.list;
   if (!inputPath || !listName) {
     throw new Error(
-      'usage: maps-list-saver save <resolved.tsv> --list <list name> [--results results.tsv]',
+      'usage: maps-list-saver save <resolved.tsv> --list <list name> [--results results.tsv] [--headless]',
     );
   }
 
@@ -110,7 +119,7 @@ async function saveCommand(argv: string[]): Promise<void> {
   );
   if (!pending.length) return;
 
-  const context = await launchContext();
+  const context = await launchContext(values.headless);
   const page = context.pages()[0] ?? (await context.newPage());
   let failed = 0;
   try {
