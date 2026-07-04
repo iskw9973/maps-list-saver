@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { parseArgs } from 'node:util';
 import {
   ensureSignedIn,
@@ -202,6 +203,17 @@ async function main(): Promise<void> {
       return resolveCommand(rest);
     case 'save':
       return saveCommand(rest);
+    case 'help':
+    case '--help':
+    case '-h':
+      process.stdout.write(USAGE);
+      return;
+    case '--version':
+    case '-v': {
+      const pkg = createRequire(import.meta.url)('../package.json') as { version: string };
+      process.stdout.write(`${pkg.version}\n`);
+      return;
+    }
     default:
       process.stderr.write(USAGE);
       if (command) process.exitCode = 1;
