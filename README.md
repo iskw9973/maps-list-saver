@@ -60,6 +60,22 @@ node dist/cli.js save resolved.tsv --list "行ってみたい"
 
 Add `--headless` to `resolve` or `save` to run without a visible browser window. Headed is the default because Google is more likely to flag headless sessions as automated — if a headless run suddenly behaves as signed out, drop the flag.
 
+### Switching or juggling accounts
+
+The Google session lives in a dedicated Chrome profile (`~/.maps-list-saver/profile` by default). To switch accounts, wipe it and log in again:
+
+```bash
+node dist/cli.js logout   # deletes the profile and its session
+node dist/cli.js login
+```
+
+To keep several accounts side by side, give each its own profile directory with `--profile <dir>` (works on every command; `MAPS_LIST_SAVER_PROFILE` does the same via the environment):
+
+```bash
+node dist/cli.js login --profile ~/.maps-list-saver/work
+node dist/cli.js save resolved.tsv --list "出張" --profile ~/.maps-list-saver/work
+```
+
 `resolved.tsv` columns: `query`, `resolved name`, `url`. Delete or fix rows that resolved to the wrong place before running `save`.
 
 Failed saves are logged to `results.tsv` with the error; rerunning the same `save` command retries only the failures.

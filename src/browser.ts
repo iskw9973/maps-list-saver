@@ -6,12 +6,27 @@ import { chromium, type BrowserContext } from 'playwright';
 
 /**
  * Persistent Chrome profile so the user logs in to Google once by hand.
- * Credentials are never seen or stored by this tool.
+ * Credentials are never seen or stored by this tool. Precedence:
+ * --profile flag > MAPS_LIST_SAVER_PROFILE > default.
  */
-export function profileDir(): string {
+export function profileDir(override?: string): string {
   return (
-    process.env.MAPS_LIST_SAVER_PROFILE ?? path.join(os.homedir(), '.maps-list-saver', 'profile')
+    override ??
+    process.env.MAPS_LIST_SAVER_PROFILE ??
+    path.join(os.homedir(), '.maps-list-saver', 'profile')
   );
+}
+
+/** Delete a profile directory. Returns its path, or null if it did not exist. */
+export async function removeProfile(profile?: string): Promise<string | null> {
+  const dir = profileDir(profile);
+  const exists = await fs.access(dir).then(
+    () => true,
+    () => false,
+  );
+  if (!exists) return null;
+  await fs.rm(dir, { recursive: true });
+  return dir;
 }
 
 function chromePath(): string {
@@ -28,11 +43,12 @@ function chromePath(): string {
  * login must happen outside Playwright; the session persists in the profile
  * and automated runs reuse it. Resolves when the user quits Chrome.
  */
-export async function loginWithPlainChrome(startUrl: string): Promise<void> {
-  await fs.mkdir(profileDir(), { recursive: true });
+export async function loginWithPlainChrome(startUrl: string, profile?: string): Promise<void> {
+  const dir = profileDir(profile);
+  await fs.mkdir(dir, { recursive: true });
   const child = spawn(
     chromePath(),
-    [`--user-data-dir=${profileDir()}`, '--no-first-run', '--no-default-browser-check', startUrl],
+    [`--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', startUrl],
     { stdio: 'ignore' },
   );
   await new Promise<void>((done, fail) => {
@@ -55,8 +71,13 @@ export function launchOptions(headless: boolean) {
   };
 }
 
-export async function launchContext(headless = false): Promise<BrowserContext> {
-  return chromium.launchPersistentContext(profileDir(), launchOptions(headless));
+export async function launchContext(
+  options: { headless?: boolean; profile?: string } = {},
+): Promise<BrowserContext> {
+  return chromium.launchPersistentContext(
+    profileDir(options.profile),
+    launchOptions(options.headless ?? false),
+  );
 }
 
 /** Random pause between actions so the pace stays human-like. */

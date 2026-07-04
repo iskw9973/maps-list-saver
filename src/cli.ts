@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 import fs from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { humanDelay, launchContext, loginWithPlainChrome, profileDir } from './browser.js';
+import {
+  humanDelay,
+  launchContext,
+  loginWithPlainChrome,
+  profileDir,
+  removeProfile,
+} from './browser.js';
 import { parsePlaceList } from './places.js';
 import { resolvePlace } from './resolve.js';
 import { savePlace } from './save.js';
@@ -20,6 +26,10 @@ Usage:
       Open Chrome with a dedicated profile; log in to Google by hand, then
       close the browser. Credentials never touch this tool.
 
+  maps-list-saver logout
+      Delete the dedicated profile (and its Google session). Run login again
+      to sign in with another account.
+
   maps-list-saver resolve <places.txt> [-o resolved.tsv] [--headless]
       Resolve free-text place names (one per line, # for comments) into
       canonical Google Maps URLs. Review the TSV before saving!
@@ -30,14 +40,31 @@ Usage:
 
   --headless runs without a visible browser window. If Google starts refusing
   the session ("not signed in"), drop the flag and run headed again.
+
+  --profile <dir> (any command) uses a different profile directory, so
+  multiple Google accounts can be kept side by side. Defaults to
+  $MAPS_LIST_SAVER_PROFILE or ~/.maps-list-saver/profile.
 `;
 
-async function login(): Promise<void> {
+const PROFILE_OPTION = { profile: { type: 'string' } } as const;
+
+async function login(argv: string[]): Promise<void> {
+  const { values } = parseArgs({ args: argv, options: { ...PROFILE_OPTION } });
   process.stderr.write(
-    `Log in to Google in the opened browser (profile: ${profileDir()}).\n` +
+    `Log in to Google in the opened browser (profile: ${profileDir(values.profile)}).\n` +
       'When you are done, quit Chrome entirely (Cmd+Q on macOS).\n',
   );
-  await loginWithPlainChrome('https://www.google.com/maps');
+  await loginWithPlainChrome('https://www.google.com/maps', values.profile);
+}
+
+async function logout(argv: string[]): Promise<void> {
+  const { values } = parseArgs({ args: argv, options: { ...PROFILE_OPTION } });
+  const removed = await removeProfile(values.profile);
+  process.stderr.write(
+    removed
+      ? `Removed profile ${removed}. Run login to sign in again.\n`
+      : `No profile at ${profileDir(values.profile)} — nothing to remove.\n`,
+  );
 }
 
 async function resolveCommand(argv: string[]): Promise<void> {
@@ -46,6 +73,7 @@ async function resolveCommand(argv: string[]): Promise<void> {
     options: {
       output: { type: 'string', short: 'o' },
       headless: { type: 'boolean', default: false },
+      ...PROFILE_OPTION,
     },
     allowPositionals: true,
   });
@@ -57,7 +85,7 @@ async function resolveCommand(argv: string[]): Promise<void> {
   const queries = parsePlaceList(await fs.readFile(inputPath, 'utf8'));
   process.stderr.write(`Resolving ${queries.length} places...\n`);
 
-  const context = await launchContext(values.headless);
+  const context = await launchContext({ headless: values.headless, profile: values.profile });
   const page = context.pages()[0] ?? (await context.newPage());
   const resolved = [];
   const misses: string[] = [];
@@ -98,6 +126,7 @@ async function saveCommand(argv: string[]): Promise<void> {
       list: { type: 'string', short: 'l' },
       results: { type: 'string', short: 'r', default: 'results.tsv' },
       headless: { type: 'boolean', default: false },
+      ...PROFILE_OPTION,
     },
     allowPositionals: true,
   });
@@ -119,7 +148,7 @@ async function saveCommand(argv: string[]): Promise<void> {
   );
   if (!pending.length) return;
 
-  const context = await launchContext(values.headless);
+  const context = await launchContext({ headless: values.headless, profile: values.profile });
   const page = context.pages()[0] ?? (await context.newPage());
   let failed = 0;
   try {
@@ -161,7 +190,9 @@ async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   switch (command) {
     case 'login':
-      return login();
+      return login(rest);
+    case 'logout':
+      return logout(rest);
     case 'resolve':
       return resolveCommand(rest);
     case 'save':

@@ -1,5 +1,42 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { launchOptions } from './browser.js';
+import { launchOptions, profileDir, removeProfile } from './browser.js';
+
+describe('profileDir', () => {
+  afterEach(() => {
+    delete process.env.MAPS_LIST_SAVER_PROFILE;
+  });
+
+  it('defaults to ~/.maps-list-saver/profile', () => {
+    expect(profileDir()).toBe(path.join(os.homedir(), '.maps-list-saver', 'profile'));
+  });
+
+  it('falls back to MAPS_LIST_SAVER_PROFILE', () => {
+    process.env.MAPS_LIST_SAVER_PROFILE = '/tmp/env-profile';
+    expect(profileDir()).toBe('/tmp/env-profile');
+  });
+
+  it('prefers an explicit override over the environment', () => {
+    process.env.MAPS_LIST_SAVER_PROFILE = '/tmp/env-profile';
+    expect(profileDir('/tmp/cli-profile')).toBe('/tmp/cli-profile');
+  });
+});
+
+describe('removeProfile', () => {
+  it('removes an existing profile and returns its path', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mls-profile-'));
+    await fs.writeFile(path.join(dir, 'Cookies'), 'x');
+    expect(await removeProfile(dir)).toBe(dir);
+    await expect(fs.access(dir)).rejects.toThrow();
+  });
+
+  it('returns null when there is no profile to remove', async () => {
+    const dir = path.join(os.tmpdir(), 'mls-profile-does-not-exist');
+    expect(await removeProfile(dir)).toBeNull();
+  });
+});
 
 describe('launchOptions', () => {
   afterEach(() => {
