@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# runtime artifacts (never commit personal data)
+resolved.tsv
+results.tsv
+places.txt

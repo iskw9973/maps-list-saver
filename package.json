@@ -1,0 +1,36 @@
+{
+  "name": "maps-list-saver",
+  "version": "0.1.0",
+  "description": "Save a list of places to your Google Maps saved lists via browser automation",
+  "type": "module",
+  "license": "MIT",
+  "author": "iskw9973",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iskw9973/maps-list-saver.git"
+  },
+  "bin": {
+    "maps-list-saver": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
