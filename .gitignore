@@ -4,8 +4,8 @@ dist/
 .DS_Store
 
 # runtime artifacts (never commit personal data)
-/resolved.tsv
-/results.tsv
-/places.txt
-demo/resolved.tsv
-demo/results.tsv
+/resolved*.tsv
+/results*.tsv
+/places*.txt
+demo/resolved*.tsv
+demo/results*.tsv
