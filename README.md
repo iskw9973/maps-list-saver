@@ -59,7 +59,18 @@ cat resolved.tsv
 node dist/cli.js save resolved.tsv --list "行ってみたい"
 ```
 
-Add `--headless` to `resolve` or `save` to run without a visible browser window. Headed is the default because Google is more likely to flag headless sessions as automated — if a headless run suddenly behaves as signed out, drop the flag.
+### Inspecting your lists (for scripts and AI agents)
+
+```bash
+node dist/cli.js lists            # name<TAB>visibility<TAB>count per line
+node dist/cli.js lists --json     # same data as JSON
+```
+
+Prints every saved list with its visibility and place count in a
+machine-readable form, so a script or an AI agent can check what exists
+(before saving, or to spot duplicates) without driving a browser itself.
+
+Add `--headless` to `resolve`, `save`, or `lists` to run without a visible browser window. Headed is the default because Google is more likely to flag headless sessions as automated — if a headless run suddenly behaves as signed out, drop the flag.
 
 ### Switching or juggling accounts
 

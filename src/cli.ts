@@ -10,6 +10,7 @@ import {
   profileDir,
   removeProfile,
 } from './browser.js';
+import { fetchSavedLists, serializeLists } from './lists.js';
 import { parsePlaceList } from './places.js';
 import { resolvePlace } from './resolve.js';
 import { savePlace } from './save.js';
@@ -39,6 +40,11 @@ Usage:
   maps-list-saver save <resolved.tsv> --list <list name> [--results results.tsv] [--headless]
       Save each resolved place into the given list. Progress is appended to
       the results file, so interrupted or failed runs can simply be rerun.
+
+  maps-list-saver lists [--json] [--headless]
+      Print every saved list as "name<TAB>visibility<TAB>count" (or JSON with
+      --json). Machine-readable, so scripts and AI agents can inspect the
+      account's lists without driving a browser themselves.
 
   --headless runs without a visible browser window. If Google starts refusing
   the session ("not signed in"), drop the flag and run headed again.
@@ -192,6 +198,31 @@ async function saveCommand(argv: string[]): Promise<void> {
   }
 }
 
+async function listsCommand(argv: string[]): Promise<void> {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      json: { type: 'boolean', default: false },
+      headless: { type: 'boolean', default: false },
+      ...PROFILE_OPTION,
+    },
+  });
+
+  const context = await launchContext({ headless: values.headless, profile: values.profile });
+  const page = context.pages()[0] ?? (await context.newPage());
+  let lists;
+  try {
+    await ensureSignedIn(page);
+    lists = await fetchSavedLists(page);
+  } finally {
+    await context.close();
+  }
+  process.stdout.write(
+    values.json ? JSON.stringify(lists, null, 2) + '\n' : serializeLists(lists) + '\n',
+  );
+  process.stderr.write(`${lists.length} lists\n`);
+}
+
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   switch (command) {
@@ -203,6 +234,8 @@ async function main(): Promise<void> {
       return resolveCommand(rest);
     case 'save':
       return saveCommand(rest);
+    case 'lists':
+      return listsCommand(rest);
     case 'help':
     case '--help':
     case '-h':
